@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>AviControl - Gestión de Alimentación Avícola</title>
+<meta name="description" content="App para productores de huevo - Control de alimentación de gallinas ponedoras">
+<meta name="theme-color" content="#1a472a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,500;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+--bg:#f4f1eb;--bg2:#eae5db;--card:#fffdf8;--primary:#1a472a;--primary-light:#2d6b40;
+--accent:#d4a843;--accent2:#c4963a;--text:#2c2c2c;--text2:#6b6b6b;--danger:#c0392b;
+--success:#27ae60;--white:#fff;--shadow:0 2px 12px rgba(0,0,0,.08);
+--radius:16px;--radius-sm:10px;
+}
+html,body{height:100%;font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);overflow-x:hidden}
+body{padding-bottom:80px}
+
+/* SPLASH */
+#splash{position:fixed;inset:0;z-index:9999;background:linear-gradient(145deg,#1a472a 0%,#0d2818 100%);
+display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s,visibility .6s}
+#splash.hide{opacity:0;visibility:hidden}
+#splash .logo-icon{font-size:64px;margin-bottom:16px;animation:bounce 1.2s ease infinite}
+#splash h1{font-family:'Playfair Display',serif;color:#d4a843;font-size:32px;letter-spacing:1px}
+#splash p{color:rgba(255,255,255,.6);font-size:14px;margin-top:8px}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+
+/* HEADER */
+.app-header{background:linear-gradient(135deg,#1a472a,#0d2818);color:#fff;padding:20px 20px 24px;
+position:sticky;top:0;z-index:100}
+.app-header h1{font-family:'Playfair Display',serif;font-size:22px;color:var(--accent)}
+.app-header p{font-size:12px;color:rgba(255,255,255,.6);margin-top:2px}
+.header-row{display:flex;align-items:center;justify-content:space-between}
+.header-icon{font-size:28px}
+.settings-btn{background:none;border:none;color:rgba(255,255,255,.7);font-size:20px;cursor:pointer;
+padding:8px;border-radius:50%;transition:background .2s}
+.settings-btn:hover{background:rgba(255,255,255,.1)}
+
+/* BOTTOM NAV */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);
+display:flex;justify-content:space-around;padding:8px 0 calc(8px + env(safe-area-inset-bottom));
+border-top:1px solid rgba(0,0,0,.06);z-index:100;box-shadow:0 -2px 20px rgba(0,0,0,.06)}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;
+cursor:pointer;padding:6px 12px;border-radius:12px;transition:all .2s;border:none;background:none;color:var(--text2);font-family:inherit}
+.nav-item.active{color:var(--primary)}
+.nav-item .nav-icon{font-size:22px;transition:transform .2s}
+.nav-item.active .nav-icon{transform:scale(1.15)}
+.nav-item span:last-child{font-size:10px;font-weight:500}
+
+/* PAGES */
+.page{display:none;padding:20px;animation:fadeUp .3s ease}
+.page.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* CARDS */
+.card{background:var(--card);border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:var(--shadow)}
+.card-title{font-family:'Playfair Display',serif;font-size:18px;color:var(--primary);margin-bottom:12px;
+display:flex;align-items:center;gap:8px}
+.card-title .emoji{font-size:22px}
+
+/* FORM */
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:13px;font-weight:500;color:var(--text2);margin-bottom:6px}
+.form-group input,.form-group select{width:100%;padding:14px 16px;border:2px solid var(--bg2);
+border-radius:var(--radius-sm);font-size:15px;font-family:inherit;background:var(--bg);
+transition:border-color .2s;outline:none;color:var(--text)}
+.form-group input:focus,.form-group select:focus{border-color:var(--primary)}
+.form-group select{appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%236b6b6b' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+background-repeat:no-repeat;background-position:right 16px center;padding-right:40px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+padding:14px 24px;border-radius:var(--radius-sm);font-size:15px;font-weight:600;
+border:none;cursor:pointer;transition:all .2s;font-family:inherit;width:100%}
+.btn-primary{background:var(--primary);color:#fff}
+.btn-primary:hover{background:var(--primary-light)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-accent:hover{background:var(--accent2)}
+.btn-outline{background:transparent;color:var(--primary);border:2px solid var(--primary)}
+.btn-danger{background:var(--danger);color:#fff}
+.btn-sm{padding:10px 16px;font-size:13px}
+
+/* BREED CARDS */
+.breed-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.breed-card{background:var(--bg);border:2px solid transparent;border-radius:var(--radius);
+padding:16px;text-align:center;cursor:pointer;transition:all .25s}
+.breed-card:hover{border-color:var(--accent)}
+.breed-card.selected{border-color:var(--primary);background:rgba(26,71,42,.06)}
+.breed-card .breed-emoji{font-size:36px;display:block;margin-bottom:8px}
+.breed-card .breed-name{font-weight:700;font-size:13px;color:var(--primary)}
+.breed-card .breed-type{font-size:11px;color:var(--text2);margin-top:2px}
+.breed-card .breed-eggs{font-size:11px;color:var(--accent2);font-weight:500;margin-top:4px}
+
+/* RESULT PANEL */
+.result-panel{background:linear-gradient(135deg,#1a472a,#0d2818);border-radius:var(--radius);
+padding:24px;color:#fff;margin-bottom:16px}
+.result-panel .big-number{font-family:'Playfair Display',serif;font-size:42px;color:var(--accent);line-height:1}
+.result-panel .unit{font-size:16px;color:rgba(255,255,255,.7);margin-left:4px}
+.result-panel .label{font-size:13px;color:rgba(255,255,255,.5);margin-top:4px}
+.result-row{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.1)}
+.result-row:last-child{border:none}
+.result-row .r-label{color:rgba(255,255,255,.6);font-size:13px}
+.result-row .r-value{color:var(--accent);font-weight:600;font-size:14px}
+
+/* SCHEDULE */
+.schedule-item{display:flex;align-items:center;gap:14px;padding:14px;
+background:var(--bg);border-radius:var(--radius-sm);margin-bottom:10px}
+.schedule-item .time-badge{background:var(--primary);color:#fff;padding:8px 12px;
+border-radius:var(--radius-sm);font-weight:700;font-size:15px;min-width:70px;text-align:center}
+.schedule-item .schedule-info{flex:1}
+.schedule-item .schedule-info .kg{font-weight:700;color:var(--primary);font-size:15px}
+.schedule-item .schedule-info .desc{font-size:12px;color:var(--text2);margin-top:2px}
+.schedule-item .delete-btn{background:none;border:none;color:var(--danger);font-size:18px;cursor:pointer;
+padding:8px;border-radius:50%;transition:background .2s}
+.schedule-item .delete-btn:hover{background:rgba(192,57,43,.1)}
+
+/* TABLE */
+.feed-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:12px}
+.feed-table th{background:var(--primary);color:#fff;padding:10px 8px;text-align:left;font-weight:500;
+position:sticky;top:0}
+.feed-table th:first-child{border-radius:8px 0 0 0}
+.feed-table th:last-child{border-radius:0 8px 0 0}
+.feed-table td{padding:9px 8px;border-bottom:1px solid var(--bg2)}
+.feed-table tr:nth-child(even){background:var(--bg)}
+.feed-table tr.current-week{background:rgba(212,168,67,.15);font-weight:600}
+.table-scroll{max-height:400px;overflow-y:auto;border-radius:var(--radius-sm);border:1px solid var(--bg2)}
+
+/* STATS */
+.stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.stat-card{background:var(--bg);border-radius:var(--radius-sm);padding:16px;text-align:center}
+.stat-card .stat-value{font-family:'Playfair Display',serif;font-size:28px;color:var(--primary)}
+.stat-card .stat-label{font-size:11px;color:var(--text2);margin-top:4px}
+
+/* NOTIFICATION BANNER */
+.notif-banner{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;
+border-radius:var(--radius);padding:16px 20px;margin-bottom:16px;display:flex;align-items:center;gap:12px}
+.notif-banner .notif-icon{font-size:28px}
+.notif-banner .notif-text{font-size:13px;line-height:1.4}
+.notif-banner .notif-text strong{display:block;font-size:15px;margin-bottom:2px}
+
+/* TOGGLE */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0}
+.toggle{position:relative;width:48px;height:28px;cursor:pointer}
+.toggle input{opacity:0;width:0;height:0}
+.toggle .slider{position:absolute;inset:0;background:#ccc;border-radius:28px;transition:.3s}
+.toggle .slider:before{content:'';position:absolute;width:22px;height:22px;left:3px;bottom:3px;
+background:#fff;border-radius:50%;transition:.3s}
+.toggle input:checked+.slider{background:var(--primary)}
+.toggle input:checked+.slider:before{transform:translateX(20px)}
+
+/* ADD SCHEDULE FORM */
+.add-schedule-row{display:flex;gap:10px;align-items:flex-end;margin-bottom:16px}
+.add-schedule-row .form-group{flex:1;margin-bottom:0}
+.add-schedule-row .btn{width:auto;padding:14px 20px}
+
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:40px 20px;color:var(--text2)}
+.empty-state .empty-icon{font-size:48px;margin-bottom:12px;opacity:.5}
+.empty-state p{font-size:14px}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;
+display:flex;align-items:flex-end;justify-content:center;opacity:0;visibility:hidden;transition:all .3s}
+.modal-overlay.show{opacity:1;visibility:visible}
+.modal{background:var(--card);border-radius:20px 20px 0 0;width:100%;max-width:500px;
+max-height:85vh;overflow-y:auto;padding:24px;transform:translateY(100%);transition:transform .3s}
+.modal-overlay.show .modal{transform:none}
+.modal-handle{width:40px;height:4px;background:var(--bg2);border-radius:4px;margin:0 auto 20px}
+
+/* WEEK SELECTOR */
+.week-selector{display:flex;align-items:center;gap:12px;justify-content:center;margin:16px 0}
+.week-selector .week-btn{width:40px;height:40px;border-radius:50%;border:none;
+background:var(--bg);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;
+transition:all .2s;color:var(--text)}
+.week-selector .week-btn:hover{background:var(--primary);color:#fff}
+.week-selector .week-display{font-family:'Playfair Display',serif;font-size:24px;color:var(--primary);min-width:120px;text-align:center}
+
+@media(min-width:500px){
+  body{max-width:500px;margin:0 auto}
+  .bottom-nav{max-width:500px;left:50%;transform:translateX(-50%)}
+}
+</style>
+</head>
+<body>
+
+<!-- SPLASH SCREEN -->
+<div id="splash">
+  <div class="logo-icon">🐔</div>
+  <h1>AviControl</h1>
+  <p>Gestión de Alimentación Avícola</p>
+</div>
+
+<!-- HEADER -->
+<header class="app-header">
+  <div class="header-row">
+    <div>
+      <h1>🐔 AviControl</h1>
+      <p id="header-subtitle">Gestión de Alimentación Avícola</p>
+    </div>
+    <button class="settings-btn" onclick="openSettings()">⚙️</button>
+  </div>
+</header>
+
+<!-- PAGE: INICIO -->
+<div id="page-home" class="page active">
+  
+  <!-- Welcome / Setup -->
+  <div id="setup-section">
+    <div class="card">
+      <div class="card-title"><span class="emoji">👋</span> Bienvenido Avicultor</div>
+      <p style="font-size:14px;color:var(--text2);margin-bottom:16px;line-height:1.5">
+        Configura tu granja para calcular el alimento que necesitan tus aves según su raza y edad.
+      </p>
+      <div class="form-group">
+        <label>Nombre de tu granja</label>
+        <input type="text" id="farmName" placeholder="Ej: Granja El Sol">
+      </div>
+      <div class="form-group">
+        <label>Número de gallinas</label>
+        <input type="number" id="numBirds" placeholder="Ej: 100" min="1">
+      </div>
+      <button class="btn btn-primary" onclick="goToBreeds()">Seleccionar Raza →</button>
+    </div>
+  </div>
+
+  <!-- Dashboard (after setup) -->
+  <div id="dashboard-section" style="display:none">
+    
+    <div id="next-feed-banner" class="notif-banner" style="display:none">
+      <div class="notif-icon">🔔</div>
+      <div class="notif-text">
+        <strong id="next-feed-title">Próxima alimentación</strong>
+        <span id="next-feed-detail"></span>
+      </div>
+    </div>
+
+    <div class="result-panel">
+      <div style="display:flex;align-items:flex-end;gap:6px">
+        <div class="big-number" id="dash-total-kg">0</div>
+        <div class="unit">kg/día</div>
+      </div>
+      <div class="label">Alimento total diario para tu lote</div>
+      <div style="margin-top:16px">
+        <div class="result-row">
+          <span class="r-label">🐔 Aves</span>
+          <span class="r-value" id="dash-birds">-</span>
+        </div>
+        <div class="result-row">
+          <span class="r-label">🧬 Raza</span>
+          <span class="r-value" id="dash-breed">-</span>
+        </div>
+        <div class="result-row">
+          <span class="r-label">📅 Semana de edad</span>
+          <span class="r-value" id="dash-week">-</span>
+        </div>
+        <div class="result-row">
+          <span class="r-label">🍽️ Consumo/ave/día</span>
+          <span class="r-value" id="dash-per-bird">-</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="dash-weekly-kg">0</div>
+        <div class="stat-label">kg / semana</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="dash-monthly-kg">0</div>
+        <div class="stat-label">kg / mes</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="dash-feeds">0</div>
+        <div class="stat-label">Tomas / día</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="dash-per-feed">0</div>
+        <div class="stat-label">kg por toma</div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px">
+      <button class="btn btn-outline btn-sm" onclick="openSettings()">✏️ Editar configuración</button>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: RAZAS -->
+<div id="page-breeds" class="page">
+  <div class="card">
+    <div class="card-title"><span class="emoji">🧬</span> Selecciona la Raza</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:16px">Razas de gallinas ponedoras más comunes en México:</p>
+    <div class="breed-grid" id="breedGrid"></div>
+    <div id="breed-info" style="margin-top:16px;display:none">
+      <div style="background:var(--bg);border-radius:var(--radius-sm);padding:14px">
+        <strong id="breed-info-name" style="color:var(--primary)"></strong>
+        <p id="breed-info-desc" style="font-size:12px;color:var(--text2);margin-top:6px;line-height:1.5"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: CALCULADORA -->
+<div id="page-calc" class="page">
+  <div class="card">
+    <div class="card-title"><span class="emoji">📊</span> Consumo por Semana</div>
+    <div class="week-selector">
+      <button class="week-btn" onclick="changeWeek(-1)">◀</button>
+      <div class="week-display">Semana <span id="weekNum">1</span></div>
+      <button class="week-btn" onclick="changeWeek(1)">▶</button>
+    </div>
+    <div class="result-panel" style="margin-bottom:0">
+      <div style="text-align:center">
+        <div class="label">Consumo por ave / día</div>
+        <div style="display:flex;align-items:flex-end;gap:6px;justify-content:center">
+          <div class="big-number" id="calc-grams">0</div>
+          <div class="unit">g</div>
+        </div>
+      </div>
+      <div style="margin-top:16px">
+        <div class="result-row">
+          <span class="r-label">Total diario del lote</span>
+          <span class="r-value" id="calc-total-day">-</span>
+        </div>
+        <div class="result-row">
+          <span class="r-label">Total semanal del lote</span>
+          <span class="r-value" id="calc-total-week">-</span>
+        </div>
+        <div class="result-row">
+          <span class="r-label">Fase</span>
+          <span class="r-value" id="calc-phase">-</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="emoji">📋</span> Tabla Completa</div>
+    <div class="table-scroll">
+      <table class="feed-table" id="feedTable">
+        <thead><tr><th>Semana</th><th>g/ave/día</th><th>Fase</th><th>Total lote/día</th></tr></thead>
+        <tbody id="feedTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE: HORARIOS -->
+<div id="page-schedule" class="page">
+  <div class="card">
+    <div class="card-title"><span class="emoji">⏰</span> Horarios de Alimentación</div>
+    <p style="font-size:13px;color:var(--text2);margin-bottom:16px">
+      Programa los horarios y el alimento se repartirá automáticamente en partes iguales.
+    </p>
+    
+    <div class="add-schedule-row">
+      <div class="form-group">
+        <label>Hora</label>
+        <input type="time" id="newTime" value="06:00">
+      </div>
+      <div class="form-group">
+        <label>Etiqueta (opcional)</label>
+        <input type="text" id="newLabel" placeholder="Ej: Mañana">
+      </div>
+      <button class="btn btn-accent" onclick="addSchedule()" title="Agregar">＋</button>
+    </div>
+
+    <div id="scheduleList"></div>
+    
+    <div id="scheduleEmpty" class="empty-state">
+      <div class="empty-icon">⏰</div>
+      <p>Agrega horarios para repartir<br>el alimento durante el día</p>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="emoji">🔔</span> Notificaciones</div>
+    <div class="toggle-row">
+      <div>
+        <div style="font-weight:600;font-size:14px">Activar recordatorios</div>
+        <div style="font-size:12px;color:var(--text2)">Recibe alertas antes de cada toma</div>
+      </div>
+      <label class="toggle">
+        <input type="checkbox" id="notifToggle" onchange="toggleNotifications()">
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <div>
+        <div style="font-weight:600;font-size:14px">Minutos antes</div>
+        <div style="font-size:12px;color:var(--text2)">Aviso previo a la hora de alimentar</div>
+      </div>
+      <select id="notifMinutes" style="width:80px;padding:8px;border:2px solid var(--bg2);border-radius:8px;font-family:inherit;background:var(--bg)">
+        <option value="0">0 min</option>
+        <option value="5" selected>5 min</option>
+        <option value="10">10 min</option>
+        <option value="15">15 min</option>
+        <option value="30">30 min</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settingsModal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="card-title"><span class="emoji">⚙️</span> Configuración</div>
+    
+    <div class="form-group">
+      <label>Nombre de tu granja</label>
+      <input type="text" id="editFarmName">
+    </div>
+    <div class="form-group">
+      <label>Número de gallinas</label>
+      <input type="number" id="editNumBirds" min="1">
+    </div>
+    <div class="form-group">
+      <label>Semana de edad actual</label>
+      <input type="number" id="editWeek" min="1" max="80">
+    </div>
+    <div class="form-group">
+      <label>Raza seleccionada</label>
+      <select id="editBreed"></select>
+    </div>
+
+    <button class="btn btn-primary" onclick="saveSettings()" style="margin-bottom:10px">💾 Guardar cambios</button>
+    <button class="btn btn-outline" onclick="closeSettings()">Cancelar</button>
+    <button class="btn btn-danger" onclick="resetApp()" style="margin-top:20px">🗑️ Reiniciar App</button>
+  </div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-item active" data-page="home" onclick="switchPage('home')">
+    <span class="nav-icon">🏠</span><span>Inicio</span>
+  </button>
+  <button class="nav-item" data-page="breeds" onclick="switchPage('breeds')">
+    <span class="nav-icon">🧬</span><span>Razas</span>
+  </button>
+  <button class="nav-item" data-page="calc" onclick="switchPage('calc')">
+    <span class="nav-icon">📊</span><span>Consumo</span>
+  </button>
+  <button class="nav-item" data-page="schedule" onclick="switchPage('schedule')">
+    <span class="nav-icon">⏰</span><span>Horarios</span>
+  </button>
+</nav>
+
+<script>
+// =========== BREED DATA ===========
+const BREEDS = [
+  {
+    id:'leghorn',name:'Leghorn Blanca',emoji:'🥚',type:'Ligera / Huevo blanco',
+    eggs:'280-320 huevos/año',
+    desc:'La raza más utilizada en México para producción de huevo blanco. Originaria de Italia, ligera, excelente conversión alimenticia. Consume menos alimento que las razas pesadas.',
+    // Consumo en gramos/ave/día por semana (1-80)
+    feedTable:function(w){
+      if(w<=1) return 10;if(w<=2) return 15;if(w<=3) return 20;if(w<=4) return 25;
+      if(w<=5) return 30;if(w<=6) return 35;if(w<=7) return 38;if(w<=8) return 42;
+      if(w<=9) return 45;if(w<=10) return 48;if(w<=11) return 50;if(w<=12) return 53;
+      if(w<=13) return 55;if(w<=14) return 58;if(w<=15) return 60;if(w<=16) return 63;
+      if(w<=17) return 65;if(w<=18) return 68;if(w<=19) return 75;if(w<=20) return 85;
+      if(w<=22) return 90;if(w<=24) return 95;if(w<=26) return 98;if(w<=30) return 100;
+      if(w<=40) return 102;if(w<=50) return 100;if(w<=60) return 98;return 95;
+    }
+  },
+  {
+    id:'rhode',name:'Rhode Island Red',emoji:'🟤',type:'Semipesada / Huevo marrón',
+    eggs:'250-280 huevos/año',
+    desc:'Raza norteamericana muy popular en México. Resistente, adaptable a climas cálidos. Produce huevos grandes de cáscara marrón. Mayor consumo que la Leghorn.',
+    feedTable:function(w){
+      if(w<=1) return 12;if(w<=2) return 18;if(w<=3) return 23;if(w<=4) return 28;
+      if(w<=5) return 33;if(w<=6) return 38;if(w<=7) return 42;if(w<=8) return 46;
+      if(w<=9) return 50;if(w<=10) return 53;if(w<=11) return 56;if(w<=12) return 59;
+      if(w<=13) return 62;if(w<=14) return 65;if(w<=15) return 68;if(w<=16) return 71;
+      if(w<=17) return 74;if(w<=18) return 78;if(w<=19) return 85;if(w<=20) return 95;
+      if(w<=22) return 102;if(w<=24) return 108;if(w<=26) return 112;if(w<=30) return 115;
+      if(w<=40) return 118;if(w<=50) return 115;if(w<=60) return 112;return 108;
+    }
+  },
+  {
+    id:'plymouth',name:'Plymouth Rock',emoji:'⬛',type:'Pesada / Doble propósito',
+    eggs:'200-250 huevos/año',
+    desc:'Raza americana grande y dócil. Excelente para doble propósito (huevo y carne). Huevos grandes de cáscara marrón. Se adapta bien a corrales pequeños.',
+    feedTable:function(w){
+      if(w<=1) return 13;if(w<=2) return 19;if(w<=3) return 25;if(w<=4) return 30;
+      if(w<=5) return 35;if(w<=6) return 40;if(w<=7) return 44;if(w<=8) return 48;
+      if(w<=9) return 52;if(w<=10) return 55;if(w<=11) return 58;if(w<=12) return 62;
+      if(w<=13) return 65;if(w<=14) return 68;if(w<=15) return 71;if(w<=16) return 74;
+      if(w<=17) return 77;if(w<=18) return 80;if(w<=19) return 88;if(w<=20) return 98;
+      if(w<=22) return 106;if(w<=24) return 112;if(w<=26) return 116;if(w<=30) return 120;
+      if(w<=40) return 122;if(w<=50) return 120;if(w<=60) return 116;return 112;
+    }
+  },
+  {
+    id:'newhamp',name:'New Hampshire',emoji:'🔶',type:'Semipesada / Doble propósito',
+    eggs:'200-240 huevos/año',
+    desc:'Derivada de la Rhode Island Red. Color marrón rojizo. Buena ponedora con excelente carne. Muy usada en granjas familiares de México por su rusticidad.',
+    feedTable:function(w){
+      if(w<=1) return 12;if(w<=2) return 18;if(w<=3) return 24;if(w<=4) return 29;
+      if(w<=5) return 34;if(w<=6) return 39;if(w<=7) return 43;if(w<=8) return 47;
+      if(w<=9) return 50;if(w<=10) return 54;if(w<=11) return 57;if(w<=12) return 60;
+      if(w<=13) return 63;if(w<=14) return 66;if(w<=15) return 69;if(w<=16) return 72;
+      if(w<=17) return 75;if(w<=18) return 79;if(w<=19) return 86;if(w<=20) return 96;
+      if(w<=22) return 104;if(w<=24) return 110;if(w<=26) return 114;if(w<=30) return 116;
+      if(w<=40) return 118;if(w<=50) return 116;if(w<=60) return 113;return 110;
+    }
+  },
+  {
+    id:'isa',name:'Isa Brown',emoji:'🟫',type:'Híbrida / Huevo marrón',
+    eggs:'300-350 huevos/año',
+    desc:'Línea híbrida muy popular comercialmente en México. Alta producción de huevo marrón. Excelente conversión alimenticia. Dócil y adaptable.',
+    feedTable:function(w){
+      if(w<=1) return 11;if(w<=2) return 17;if(w<=3) return 22;if(w<=4) return 27;
+      if(w<=5) return 32;if(w<=6) return 37;if(w<=7) return 40;if(w<=8) return 44;
+      if(w<=9) return 48;if(w<=10) return 51;if(w<=11) return 54;if(w<=12) return 57;
+      if(w<=13) return 60;if(w<=14) return 63;if(w<=15) return 66;if(w<=16) return 69;
+      if(w<=17) return 72;if(w<=18) return 76;if(w<=19) return 83;if(w<=20) return 93;
+      if(w<=22) return 100;if(w<=24) return 106;if(w<=26) return 110;if(w<=30) return 112;
+      if(w<=40) return 115;if(w<=50) return 112;if(w<=60) return 110;return 106;
+    }
+  },
+  {
+    id:'barrada',name:'Barrada (Jabada)',emoji:'🐓',type:'Semipesada / Doble propósito',
+    eggs:'250-280 huevos/año',
+    desc:'Conocida como gallina jabada o franciscana. Cruce de Plymouth Rock barrada con gallina blanca. Excelente para cría doméstica y sistemas alternativos. Muy resistente.',
+    feedTable:function(w){
+      if(w<=1) return 12;if(w<=2) return 18;if(w<=3) return 24;if(w<=4) return 29;
+      if(w<=5) return 34;if(w<=6) return 39;if(w<=7) return 43;if(w<=8) return 47;
+      if(w<=9) return 51;if(w<=10) return 54;if(w<=11) return 57;if(w<=12) return 60;
+      if(w<=13) return 63;if(w<=14) return 66;if(w<=15) return 69;if(w<=16) return 72;
+      if(w<=17) return 75;if(w<=18) return 78;if(w<=19) return 85;if(w<=20) return 95;
+      if(w<=22) return 103;if(w<=24) return 109;if(w<=26) return 113;if(w<=30) return 116;
+      if(w<=40) return 118;if(w<=50) return 116;if(w<=60) return 113;return 110;
+    }
+  },
+  {
+    id:'hyline',name:'Hy-Line Brown',emoji:'🪺',type:'Híbrida / Huevo marrón',
+    eggs:'300-330 huevos/año',
+    desc:'Línea genética líder mundial, muy usada en granjas tecnificadas de México. Excelente producción, buena calidad de cáscara. Óptima conversión alimenticia.',
+    feedTable:function(w){
+      if(w<=1) return 11;if(w<=2) return 16;if(w<=3) return 21;if(w<=4) return 26;
+      if(w<=5) return 31;if(w<=6) return 36;if(w<=7) return 40;if(w<=8) return 44;
+      if(w<=9) return 47;if(w<=10) return 50;if(w<=11) return 53;if(w<=12) return 56;
+      if(w<=13) return 59;if(w<=14) return 62;if(w<=15) return 65;if(w<=16) return 68;
+      if(w<=17) return 71;if(w<=18) return 75;if(w<=19) return 82;if(w<=20) return 92;
+      if(w<=22) return 99;if(w<=24) return 105;if(w<=26) return 109;if(w<=30) return 111;
+      if(w<=40) return 114;if(w<=50) return 111;if(w<=60) return 109;return 105;
+    }
+  },
+  {
+    id:'australorp',name:'Australorp',emoji:'⚫',type:'Pesada / Huevo marrón',
+    eggs:'250-300 huevos/año',
+    desc:'Raza australiana negra. Récord mundial de postura (364 huevos en 365 días). Calmada, adaptable, excelente para granjas familiares. Buena en climas variados.',
+    feedTable:function(w){
+      if(w<=1) return 13;if(w<=2) return 19;if(w<=3) return 25;if(w<=4) return 30;
+      if(w<=5) return 35;if(w<=6) return 40;if(w<=7) return 44;if(w<=8) return 48;
+      if(w<=9) return 52;if(w<=10) return 55;if(w<=11) return 58;if(w<=12) return 61;
+      if(w<=13) return 64;if(w<=14) return 67;if(w<=15) return 70;if(w<=16) return 73;
+      if(w<=17) return 76;if(w<=18) return 80;if(w<=19) return 87;if(w<=20) return 97;
+      if(w<=22) return 105;if(w<=24) return 111;if(w<=26) return 115;if(w<=30) return 118;
+      if(w<=40) return 120;if(w<=50) return 118;if(w<=60) return 115;return 112;
+    }
+  }
+];
+
+// =========== STATE ===========
+var state = {
+  farmName:'',numBirds:0,breedId:'',week:1,
+  schedules:[],notifsOn:false,notifMinutes:5,setupDone:false
+};
+
+function loadState(){
+  try{ var s=localStorage.getItem('avicontrol');if(s) state=JSON.parse(s); }catch(e){}
+}
+function saveState(){
+  try{ localStorage.setItem('avicontrol',JSON.stringify(state)); }catch(e){}
+}
+
+// =========== INIT ===========
+window.addEventListener('DOMContentLoaded',function(){
+  loadState();
+  renderBreedGrid();
+  
+  setTimeout(function(){document.getElementById('splash').classList.add('hide')},1500);
+  
+  if(state.setupDone){
+    showDashboard();
+    switchPage('home');
+  }
+  renderScheduleList();
+  updateCalc();
+  populateEditBreed();
+  startNotifChecker();
+});
+
+// =========== NAVIGATION ===========
+function switchPage(name){
+  var pages=document.querySelectorAll('.page');
+  for(var i=0;i<pages.length;i++) pages[i].classList.remove('active');
+  document.getElementById('page-'+name).classList.add('active');
+  var navs=document.querySelectorAll('.nav-item');
+  for(var i=0;i<navs.length;i++){
+    navs[i].classList.toggle('active',navs[i].getAttribute('data-page')===name);
+  }
+}
+
+// =========== BREED GRID ===========
+function renderBreedGrid(){
+  var html='';
+  for(var i=0;i<BREEDS.length;i++){
+    var b=BREEDS[i];
+    var sel=state.breedId===b.id?'selected':'';
+    html+='<div class="breed-card '+sel+'" onclick="selectBreed(\''+b.id+'\')">';
+    html+='<span class="breed-emoji">'+b.emoji+'</span>';
+    html+='<div class="breed-name">'+b.name+'</div>';
+    html+='<div class="breed-type">'+b.type+'</div>';
+    html+='<div class="breed-eggs">'+b.eggs+'</div>';
+    html+='</div>';
+  }
+  document.getElementById('breedGrid').innerHTML=html;
+}
+
+function selectBreed(id){
+  state.breedId=id;
+  renderBreedGrid();
+  var breed=getBreed(id);
+  if(breed){
+    document.getElementById('breed-info').style.display='block';
+    document.getElementById('breed-info-name').textContent=breed.emoji+' '+breed.name;
+    document.getElementById('breed-info-desc').textContent=breed.desc;
+  }
+  
+  if(state.setupDone){
+    saveState();
+    showDashboard();
+    updateCalc();
+  }else{
+    // During setup, auto-proceed
+    if(state.numBirds>0){
+      state.week=state.week||1;
+      state.setupDone=true;
+      saveState();
+      showDashboard();
+      updateCalc();
+      switchPage('home');
+    }
+  }
+}
+
+function getBreed(id){
+  for(var i=0;i<BREEDS.length;i++) if(BREEDS[i].id===id) return BREEDS[i];
+  return null;
+}
+
+function getPhase(w){
+  if(w<=6) return 'Cría (Inicio)';
+  if(w<=12) return 'Cría (Crecimiento)';
+  if(w<=18) return 'Recría (Desarrollo)';
+  if(w<=20) return 'Pre-postura';
+  return 'Postura';
+}
+
+// =========== SETUP ===========
+function goToBreeds(){
+  var name=document.getElementById('farmName').value.trim();
+  var num=parseInt(document.getElementById('numBirds').value);
+  if(!name){alert('Ingresa el nombre de tu granja');return}
+  if(!num||num<1){alert('Ingresa el número de gallinas');return}
+  state.farmName=name;
+  state.numBirds=num;
+  state.week=state.week||1;
+  saveState();
+  switchPage('breeds');
+}
+
+// =========== DASHBOARD ===========
+function showDashboard(){
+  document.getElementById('setup-section').style.display='none';
+  document.getElementById('dashboard-section').style.display='block';
+  document.getElementById('header-subtitle').textContent=state.farmName||'Gestión de Alimentación';
+  
+  var breed=getBreed(state.breedId);
+  if(!breed) return;
+  
+  var grams=breed.feedTable(state.week);
+  var totalGDay=grams*state.numBirds;
+  var totalKgDay=(totalGDay/1000);
+  
+  document.getElementById('dash-total-kg').textContent=totalKgDay.toFixed(1);
+  document.getElementById('dash-birds').textContent=state.numBirds+' aves';
+  document.getElementById('dash-breed').textContent=breed.name;
+  document.getElementById('dash-week').textContent='Semana '+state.week+' ('+getPhase(state.week)+')';
+  document.getElementById('dash-per-bird').textContent=grams+' g';
+  document.getElementById('dash-weekly-kg').textContent=(totalKgDay*7).toFixed(1);
+  document.getElementById('dash-monthly-kg').textContent=(totalKgDay*30).toFixed(0);
+  
+  var numFeeds=state.schedules.length||1;
+  var perFeed=totalKgDay/numFeeds;
+  document.getElementById('dash-feeds').textContent=numFeeds;
+  document.getElementById('dash-per-feed').textContent=perFeed.toFixed(1);
+  
+  updateNextFeed(totalKgDay,numFeeds);
+}
+
+function updateNextFeed(totalKgDay,numFeeds){
+  var banner=document.getElementById('next-feed-banner');
+  if(state.schedules.length===0){banner.style.display='none';return}
+  
+  var now=new Date();
+  var nowMin=now.getHours()*60+now.getMinutes();
+  var next=null;
+  var sorted=state.schedules.slice().sort(function(a,b){return timeToMin(a.time)-timeToMin(b.time)});
+  
+  for(var i=0;i<sorted.length;i++){
+    if(timeToMin(sorted[i].time)>nowMin){next=sorted[i];break}
+  }
+  if(!next) next=sorted[0]; // tomorrow's first
+  
+  var perFeed=(totalKgDay/numFeeds).toFixed(1);
+  banner.style.display='flex';
+  document.getElementById('next-feed-title').textContent='⏰ Próxima: '+next.time+(next.label?' - '+next.label:'');
+  document.getElementById('next-feed-detail').textContent='Dar '+perFeed+' kg de alimento a tus '+state.numBirds+' aves';
+}
+
+function timeToMin(t){var p=t.split(':');return parseInt(p[0])*60+parseInt(p[1])}
+
+// =========== CALCULATOR ===========
+function updateCalc(){
+  var breed=getBreed(state.breedId);
+  if(!breed) return;
+  
+  var w=state.week||1;
+  document.getElementById('weekNum').textContent=w;
+  var g=breed.feedTable(w);
+  document.getElementById('calc-grams').textContent=g;
+  var totalDay=(g*state.numBirds/1000);
+  document.getElementById('calc-total-day').textContent=totalDay.toFixed(1)+' kg';
+  document.getElementById('calc-total-week').textContent=(totalDay*7).toFixed(1)+' kg';
+  document.getElementById('calc-phase').textContent=getPhase(w);
+  
+  // Build full table
+  var body=document.getElementById('feedTableBody');
+  var html='';
+  var weeks=[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,22,24,26,30,34,38,42,46,50,54,58,62,66,70,76,80];
+  for(var i=0;i<weeks.length;i++){
+    var wk=weeks[i];
+    var gw=breed.feedTable(wk);
+    var tot=(gw*state.numBirds/1000).toFixed(1);
+    var cls=wk===w?'current-week':'';
+    html+='<tr class="'+cls+'">';
+    html+='<td>'+wk+'</td><td>'+gw+'</td><td>'+getPhase(wk)+'</td><td>'+tot+' kg</td>';
+    html+='</tr>';
+  }
+  body.innerHTML=html;
+  
+  // Auto scroll to current week
+  setTimeout(function(){
+    var row=document.querySelector('.current-week');
+    if(row) row.scrollIntoView({block:'center',behavior:'smooth'});
+  },100);
+}
+
+function changeWeek(delta){
+  state.week=Math.max(1,Math.min(80,state.week+delta));
+  saveState();
+  updateCalc();
+  showDashboard();
+}
+
+// =========== SCHEDULES ===========
+function addSchedule(){
+  var time=document.getElementById('newTime').value;
+  var label=document.getElementById('newLabel').value.trim();
+  if(!time){alert('Selecciona una hora');return}
+  
+  // Check duplicate
+  for(var i=0;i<state.schedules.length;i++){
+    if(state.schedules[i].time===time){alert('Ya existe un horario a las '+time);return}
+  }
+  
+  state.schedules.push({time:time,label:label||''});
+  state.schedules.sort(function(a,b){return timeToMin(a.time)-timeToMin(b.time)});
+  document.getElementById('newLabel').value='';
+  saveState();
+  renderScheduleList();
+  showDashboard();
+  scheduleAllNotifications();
+}
+
+function removeSchedule(idx){
+  state.schedules.splice(idx,1);
+  saveState();
+  renderScheduleList();
+  showDashboard();
+  scheduleAllNotifications();
+}
+
+function renderScheduleList(){
+  var list=document.getElementById('scheduleList');
+  var empty=document.getElementById('scheduleEmpty');
+  
+  if(state.schedules.length===0){
+    list.innerHTML='';
+    empty.style.display='block';
+    return;
+  }
+  empty.style.display='none';
+  
+  var breed=getBreed(state.breedId);
+  var perFeed=0;
+  if(breed && state.numBirds>0){
+    var g=breed.feedTable(state.week||1);
+    var totalKg=g*state.numBirds/1000;
+    perFeed=totalKg/state.schedules.length;
+  }
+  
+  var html='';
+  for(var i=0;i<state.schedules.length;i++){
+    var s=state.schedules[i];
+    html+='<div class="schedule-item">';
+    html+='<div class="time-badge">'+s.time+'</div>';
+    html+='<div class="schedule-info">';
+    html+='<div class="kg">'+perFeed.toFixed(1)+' kg</div>';
+    html+='<div class="desc">'+(s.label||'Toma '+(i+1))+' — '+state.numBirds+' aves</div>';
+    html+='</div>';
+    html+='<button class="delete-btn" onclick="removeSchedule('+i+')">✕</button>';
+    html+='</div>';
+  }
+  list.innerHTML=html;
+}
+
+// =========== NOTIFICATIONS ===========
+function toggleNotifications(){
+  var on=document.getElementById('notifToggle').checked;
+  if(on){
+    if('Notification' in window){
+      Notification.requestPermission().then(function(perm){
+        if(perm==='granted'){
+          state.notifsOn=true;
+          saveState();
+          scheduleAllNotifications();
+          new Notification('🐔 AviControl','{ body:"Notificaciones activadas. Te avisaremos antes de cada toma." }');
+        }else{
+          document.getElementById('notifToggle').checked=false;
+          alert('Necesitas permitir las notificaciones en tu navegador.');
+        }
+      });
+    }else{
+      alert('Tu navegador no soporta notificaciones.');
+      document.getElementById('notifToggle').checked=false;
+    }
+  }else{
+    state.notifsOn=false;
+    saveState();
+    clearAllNotifTimers();
+  }
+}
+
+var notifTimers=[];
+function clearAllNotifTimers(){
+  for(var i=0;i<notifTimers.length;i++) clearTimeout(notifTimers[i]);
+  notifTimers=[];
+}
+
+function scheduleAllNotifications(){
+  clearAllNotifTimers();
+  if(!state.notifsOn||state.schedules.length===0) return;
+  
+  var breed=getBreed(state.breedId);
+  if(!breed) return;
+  var g=breed.feedTable(state.week||1);
+  var totalKg=g*state.numBirds/1000;
+  var perFeed=(totalKg/state.schedules.length).toFixed(1);
+  var minsBefore=parseInt(document.getElementById('notifMinutes').value)||5;
+  
+  var now=new Date();
+  
+  for(var i=0;i<state.schedules.length;i++){
+    (function(sched){
+      var parts=sched.time.split(':');
+      var target=new Date();
+      target.setHours(parseInt(parts[0]),parseInt(parts[1])-minsBefore,0,0);
+      
+      var diff=target-now;
+      if(diff<0) diff+=24*60*60*1000; // schedule for tomorrow
+      
+      var timer=setTimeout(function(){
+        if(Notification.permission==='granted'){
+          new Notification('🐔 ¡Hora de alimentar!',{
+            body:'Dar '+perFeed+' kg a tus '+state.numBirds+' aves. '+(sched.label||sched.time),
+            icon:'icon-192.png',
+            tag:'avicontrol-'+sched.time,
+            requireInteraction:true
+          });
+        }
+        // Reschedule for next day
+        scheduleAllNotifications();
+      },diff);
+      notifTimers.push(timer);
+    })(state.schedules[i]);
+  }
+}
+
+function startNotifChecker(){
+  document.getElementById('notifToggle').checked=state.notifsOn;
+  if(state.notifsOn) scheduleAllNotifications();
+  // Recheck every minute for dashboard update
+  setInterval(function(){
+    if(state.setupDone) showDashboard();
+  },60000);
+}
+
+// =========== SETTINGS ===========
+function openSettings(){
+  document.getElementById('editFarmName').value=state.farmName;
+  document.getElementById('editNumBirds').value=state.numBirds;
+  document.getElementById('editWeek').value=state.week;
+  document.getElementById('editBreed').value=state.breedId;
+  document.getElementById('settingsModal').classList.add('show');
+}
+function closeSettings(){
+  document.getElementById('settingsModal').classList.remove('show');
+}
+function populateEditBreed(){
+  var sel=document.getElementById('editBreed');
+  var html='';
+  for(var i=0;i<BREEDS.length;i++){
+    html+='<option value="'+BREEDS[i].id+'">'+BREEDS[i].emoji+' '+BREEDS[i].name+'</option>';
+  }
+  sel.innerHTML=html;
+}
+function saveSettings(){
+  state.farmName=document.getElementById('editFarmName').value.trim();
+  state.numBirds=parseInt(document.getElementById('editNumBirds').value)||0;
+  state.week=parseInt(document.getElementById('editWeek').value)||1;
+  state.breedId=document.getElementById('editBreed').value;
+  state.setupDone=true;
+  saveState();
+  closeSettings();
+  showDashboard();
+  updateCalc();
+  renderScheduleList();
+  renderBreedGrid();
+  scheduleAllNotifications();
+}
+function resetApp(){
+  if(confirm('¿Estás seguro? Se borrarán todos tus datos.')){
+    localStorage.removeItem('avicontrol');
+    location.reload();
+  }
+}
+
+// Close modal on overlay click
+document.getElementById('settingsModal').addEventListener('click',function(e){
+  if(e.target===this) closeSettings();
+});
+
+// =========== SERVICE WORKER ===========
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('sw.js').catch(function(e){console.log('SW error:',e)});
+}
+</script>
+</body>
+</html>
