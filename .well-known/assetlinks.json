@@ -2,7 +2,7 @@
   "relation": ["delegate_permission/common.handle_all_urls"],
   "target": {
     "namespace": "android_app",
-    "package_name": "io.github.teccapitalweb.twa",
+    "package_name": "com.teccapital.avicola",
     "sha256_cert_fingerprints": ["C5:6B:AE:3A:CD:ED:F3:82:D0:AB:23:5C:FF:C7:58:19:DC:2C:F7:01:25:BC:F4:BB:26:0F:6D:0C:19:4F:7A:E1"]
   }
 }]
